@@ -1026,4 +1026,141 @@ with tab_market_intel:
             )
 
 st.divider()
+
+with tab_research:
+    st.header("🔬 FINLAB AI Research Lab")
+    st.caption("Laboratorio de investigación cuantitativa · Análisis educativo")
+
+    st.info(
+        "Los resultados son análisis históricos y simulaciones educativas. "
+        "No son predicciones ni recomendaciones de inversión."
+    )
+
+    available_assets = list(prices.columns)
+
+    selected_assets = st.multiselect(
+        "Selecciona activos para investigar",
+        available_assets,
+        default=available_assets[:min(3, len(available_assets))]
+    )
+
+    if len(selected_assets) >= 1:
+        research_prices = prices[selected_assets].dropna(how="all")
+        research_returns = research_prices.pct_change().dropna()
+
+        if not research_returns.empty:
+            st.subheader("1. Comparación cuantitativa")
+
+            summary = pd.DataFrame({
+                "Rentabilidad anualizada (%)":
+                    research_returns.mean() * 252 * 100,
+                "Volatilidad anualizada (%)":
+                    research_returns.std() * np.sqrt(252) * 100,
+                "Mejor día (%)":
+                    research_returns.max() * 100,
+                "Peor día (%)":
+                    research_returns.min() * 100
+            })
+
+            st.dataframe(
+                summary.round(2),
+                use_container_width=True
+            )
+
+            st.subheader("2. Detección de movimientos inusuales")
+
+            anomalies = []
+
+            for asset in selected_assets:
+                series = research_returns[asset].dropna()
+
+                if len(series) >= 20:
+                    rolling_mean = series.rolling(20).mean()
+                    rolling_std = series.rolling(20).std()
+                    z_score = (series - rolling_mean) / rolling_std.replace(0, np.nan)
+
+                    unusual = z_score.abs() > 2
+
+                    anomalies.append({
+                        "Activo": asset,
+                        "Movimientos inusuales": int(unusual.sum()),
+                        "Mayor desviación": round(
+                            float(z_score.abs().max()), 2
+                        ) if z_score.notna().any() else 0
+                    })
+
+            if anomalies:
+                st.dataframe(
+                    pd.DataFrame(anomalies),
+                    use_container_width=True
+                )
+
+            st.subheader("3. Evolución comparativa")
+
+            normalized_research = (
+                research_prices / research_prices.iloc[0] * 100
+            )
+
+            st.line_chart(normalized_research)
+
+            st.subheader("4. Informe de investigación")
+
+            report = summary.round(2).to_string()
+
+            st.text_area(
+                "Resumen del análisis",
+                value=(
+                    "FINLAB AI RESEARCH LAB\n"
+                    "Informe cuantitativo educativo\n\n"
+                    + report
+                    + "\n\nLos datos históricos no garantizan "
+                    "resultados futuros."
+                ),
+                height=250
+            )
+
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+            from io import BytesIO
+
+            pdf_buffer = BytesIO()
+            pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
+
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(50, 800, "FINLAB AI Research Lab")
+
+            pdf.setFont("Helvetica", 10)
+            y = 765
+
+            for line in (
+                "Informe cuantitativo educativo",
+                "",
+                *report.splitlines(),
+                "",
+                "Los datos historicos no garantizan resultados futuros.",
+                "Este documento no constituye asesoramiento financiero."
+            ):
+                if y < 60:
+                    pdf.showPage()
+                    y = 800
+                    pdf.setFont("Helvetica", 10)
+
+                pdf.drawString(50, y, line[:100])
+                y -= 18
+
+            pdf.save()
+            pdf_buffer.seek(0)
+
+            st.download_button(
+                "📄 Descargar informe PDF",
+                data=pdf_buffer,
+                file_name="FINLAB_AI_Research_Report.pdf",
+                mime="application/pdf"
+            )
+
+        else:
+            st.warning("No hay suficientes datos para realizar el análisis.")
+    else:
+        st.warning("Selecciona al menos un activo.")
+
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
