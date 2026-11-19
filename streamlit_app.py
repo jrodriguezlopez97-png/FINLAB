@@ -2325,5 +2325,109 @@ with tab_v11:
         "Los escenarios son hipotéticos y no representan predicciones "
         "ni recomendaciones de inversión."
     )
+    st.divider()
+    st.subheader("15. Portfolio Optimization Lab")
+    st.caption("Comparación educativa de carteras hipotéticas")
+
+    optimization_assets = st.multiselect(
+        "Selecciona los activos",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_optimization_assets"
+    )
+
+    if len(optimization_assets) >= 2:
+
+        optimization_returns = returns[optimization_assets].dropna()
+
+        if len(optimization_returns) >= 20:
+
+            st.write("Distribución hipotética de pesos (%)")
+
+            optimization_weights = {}
+
+            for asset in optimization_assets:
+                optimization_weights[asset] = st.slider(
+                    f"Peso de {asset}",
+                    min_value=0,
+                    max_value=100,
+                    value=100 // len(optimization_assets),
+                    key=f"v13_weight_{asset}"
+                )
+
+            total_weight = sum(optimization_weights.values())
+
+            if total_weight > 0:
+
+                normalized_weights = {
+                    asset: weight / total_weight
+                    for asset, weight in optimization_weights.items()
+                }
+
+                weights_series = pd.Series(normalized_weights)
+
+                portfolio_returns = (
+                    optimization_returns * weights_series
+                ).sum(axis=1)
+
+                annual_return = (
+                    (1 + portfolio_returns).prod()
+                    ** (252 / len(portfolio_returns)) - 1
+                ) * 100
+
+                annual_volatility = (
+                    portfolio_returns.std() * (252 ** 0.5) * 100
+                )
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.metric(
+                        "Rentabilidad anualizada histórica",
+                        f"{annual_return:.2f}%"
+                    )
+
+                with col2:
+                    st.metric(
+                        "Volatilidad anualizada",
+                        f"{annual_volatility:.2f}%"
+                    )
+
+                st.subheader("Distribución de la cartera")
+
+                weights_df = pd.DataFrame({
+                    "Activo": list(normalized_weights.keys()),
+                    "Peso (%)": [
+                        value * 100
+                        for value in normalized_weights.values()
+                    ]
+                })
+
+                st.dataframe(
+                    weights_df.round(2),
+                    use_container_width=True
+                )
+
+                st.subheader("Evolución histórica simulada")
+
+                cumulative_portfolio = (
+                    (1 + portfolio_returns).cumprod()
+                )
+
+                st.line_chart(cumulative_portfolio)
+
+            else:
+                st.warning("Asigna un peso superior a cero.")
+
+        else:
+            st.warning("No hay suficientes datos históricos.")
+
+    else:
+        st.info("Selecciona al menos dos activos.")
+
+    st.caption(
+        "Los resultados utilizan datos históricos y pesos hipotéticos. "
+        "No constituyen predicciones ni recomendaciones financieras."
+    )
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
