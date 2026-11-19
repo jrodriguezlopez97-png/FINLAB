@@ -2326,6 +2326,80 @@ with tab_v11:
         "ni recomendaciones de inversión."
     )
     st.divider()
+    st.subheader("14. Model Accuracy Lab")
+    st.caption("Evaluación histórica de un modelo de referencia")
+
+    accuracy_asset = st.selectbox(
+        "Selecciona un activo",
+        institutional_assets,
+        key="v13_accuracy_asset"
+    )
+
+    accuracy_returns = returns[accuracy_asset].dropna()
+
+    if len(accuracy_returns) >= 30:
+
+        actual = accuracy_returns.iloc[1:]
+        predicted = accuracy_returns.shift(1).dropna()
+
+        comparison = pd.DataFrame({
+            "Real (%)": actual * 100,
+            "Estimado (%)": predicted * 100
+        }).dropna()
+
+        comparison["Error absoluto (%)"] = (
+            comparison["Real (%)"] -
+            comparison["Estimado (%)"]
+        ).abs()
+
+        mae = comparison["Error absoluto (%)"].mean()
+
+        direction_accuracy = (
+            (
+                (comparison["Real (%)"] >= 0) ==
+                (comparison["Estimado (%)"] >= 0)
+            ).mean() * 100
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric(
+                "Error absoluto medio",
+                f"{mae:.3f}%"
+            )
+
+        with col2:
+            st.metric(
+                "Coincidencia de dirección",
+                f"{direction_accuracy:.1f}%"
+            )
+
+        st.subheader("Comparación de resultados")
+
+        st.line_chart(
+            comparison[["Real (%)", "Estimado (%)"]].tail(100)
+        )
+
+        st.subheader("Últimos registros")
+
+        st.dataframe(
+            comparison.tail(10).round(3),
+            use_container_width=True
+        )
+
+        st.caption(
+            "Modelo de referencia: utiliza el rendimiento del día anterior "
+            "como estimación del siguiente. La coincidencia histórica "
+            "no garantiza resultados futuros."
+        )
+
+    else:
+        st.warning(
+            "Se necesitan al menos 30 observaciones para realizar "
+            "esta evaluación."
+        )
+    st.divider()
     st.subheader("15. Portfolio Optimization Lab")
     st.caption("Comparación educativa de carteras hipotéticas")
 
