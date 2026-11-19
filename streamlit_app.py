@@ -3246,5 +3246,88 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("23. FINLAB Advanced Risk Analytics")
+    st.caption("Análisis avanzado de riesgo histórico")
+
+    advanced_risk_assets = st.multiselect(
+        "Selecciona activos para analizar",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_advanced_risk_assets"
+    )
+
+    if len(advanced_risk_assets) >= 1:
+
+        advanced_data = returns[advanced_risk_assets].dropna()
+
+        if len(advanced_data) >= 30:
+
+            advanced_portfolio = advanced_data.mean(axis=1)
+
+            var_95 = advanced_portfolio.quantile(0.05) * 100
+            var_99 = advanced_portfolio.quantile(0.01) * 100
+
+            cvar_95 = (
+                advanced_portfolio[
+                    advanced_portfolio <= advanced_portfolio.quantile(0.05)
+                ].mean() * 100
+            )
+
+            cvar_99 = (
+                advanced_portfolio[
+                    advanced_portfolio <= advanced_portfolio.quantile(0.01)
+                ].mean() * 100
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric("VaR histórico 95%", f"{var_95:.2f}%")
+                st.metric("VaR histórico 99%", f"{var_99:.2f}%")
+
+            with col2:
+                st.metric("CVaR histórico 95%", f"{cvar_95:.2f}%")
+                st.metric("CVaR histórico 99%", f"{cvar_99:.2f}%")
+
+            st.subheader("Distribución de rendimientos")
+
+            st.bar_chart(
+                advanced_portfolio.tail(100) * 100
+            )
+
+            risk_comparison = pd.DataFrame({
+                "Indicador": [
+                    "VaR 95%",
+                    "VaR 99%",
+                    "CVaR 95%",
+                    "CVaR 99%"
+                ],
+                "Resultado (%)": [
+                    var_95,
+                    var_99,
+                    cvar_95,
+                    cvar_99
+                ]
+            })
+
+            st.subheader("Resumen de riesgo")
+
+            st.dataframe(
+                risk_comparison.round(3),
+                use_container_width=True
+            )
+
+            st.caption(
+                "VaR y CVaR se estiman mediante rendimientos históricos "
+                "con ponderaciones iguales. Son medidas estadísticas "
+                "y no límites máximos de pérdidas posibles."
+            )
+
+        else:
+            st.warning("Se necesitan al menos 30 observaciones.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
