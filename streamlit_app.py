@@ -2503,5 +2503,94 @@ with tab_v11:
         "Los resultados utilizan datos históricos y pesos hipotéticos. "
         "No constituyen predicciones ni recomendaciones financieras."
     )
+    st.divider()
+    st.subheader("16. FINLAB Performance Analytics")
+    st.caption("Análisis histórico de rendimiento de una cartera hipotética")
+
+    performance_assets = st.multiselect(
+        "Selecciona activos para analizar",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_performance_assets"
+    )
+
+    if len(performance_assets) >= 1:
+
+        performance_data = returns[performance_assets].dropna()
+
+        if len(performance_data) >= 2:
+
+            performance_portfolio = performance_data.mean(axis=1)
+
+            cumulative_performance = (
+                (1 + performance_portfolio).cumprod()
+            )
+
+            total_return = (
+                (cumulative_performance.iloc[-1] - 1) * 100
+            )
+
+            annualized_return = (
+                (cumulative_performance.iloc[-1]
+                 ** (252 / len(performance_portfolio)) - 1) * 100
+            )
+
+            best_day = performance_portfolio.max() * 100
+            worst_day = performance_portfolio.min() * 100
+
+            daily_volatility = (
+                performance_portfolio.std() * (252 ** 0.5) * 100
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric(
+                    "Rentabilidad acumulada",
+                    f"{total_return:.2f}%"
+                )
+
+                st.metric(
+                    "Mejor día",
+                    f"{best_day:.2f}%"
+                )
+
+            with col2:
+                st.metric(
+                    "Rentabilidad anualizada",
+                    f"{annualized_return:.2f}%"
+                )
+
+                st.metric(
+                    "Peor día",
+                    f"{worst_day:.2f}%"
+                )
+
+            st.metric(
+                "Volatilidad anualizada",
+                f"{daily_volatility:.2f}%"
+            )
+
+            st.subheader("Evolución de la cartera")
+
+            st.line_chart(cumulative_performance)
+
+            st.subheader("Distribución de rendimientos diarios")
+
+            st.bar_chart(
+                performance_portfolio.tail(60) * 100
+            )
+
+            st.caption(
+                "Cartera hipotética con ponderaciones iguales. "
+                "Las métricas utilizan datos históricos y no garantizan "
+                "resultados futuros."
+            )
+
+        else:
+            st.warning("No hay suficientes observaciones para el análisis.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
