@@ -120,7 +120,7 @@ if errors:
             st.warning(f"{ticker}: {message}")
 
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research = st.tabs([
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
@@ -130,7 +130,8 @@ tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_
     "📊 Portfolio Simulator",
     "🛡️ Risk Intelligence",
     "🌐 Market Intelligence",
-    "🔬 AI Research Lab"
+    "🔬 AI Research Lab",
+    "🚀 Executive Dashboard"
 ])
 
 with tab_market:
@@ -1162,5 +1163,78 @@ with tab_research:
             st.warning("No hay suficientes datos para realizar el análisis.")
     else:
         st.warning("Selecciona al menos un activo.")
+
+
+with tab_executive:
+    st.header("🚀 FINLAB Executive Dashboard")
+    st.caption("Centro de inteligencia y análisis cuantitativo")
+
+    st.info(
+        "Panel educativo basado en datos históricos. "
+        "No ofrece predicciones ni recomendaciones de inversión."
+    )
+
+    if not prices.empty and not returns.empty:
+        assets = list(prices.columns)
+
+        total_assets = len(assets)
+        latest_date = prices.index[-1].strftime("%Y-%m-%d")
+
+        annual_returns = returns.mean() * 252
+        annual_volatility = returns.std() * np.sqrt(252)
+
+        avg_return = annual_returns.mean() * 100
+        avg_volatility = annual_volatility.mean() * 100
+
+        latest_values = prices.iloc[-1]
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric("Activos analizados", total_assets)
+        col2.metric("Rentabilidad media anualizada", f"{avg_return:.2f}%")
+        col3.metric("Volatilidad media", f"{avg_volatility:.2f}%")
+        col4.metric("Últimos datos", latest_date)
+
+        st.divider()
+
+        st.subheader("📊 Indicadores por activo")
+
+        executive_table = pd.DataFrame({
+            "Rentabilidad anualizada (%)": annual_returns * 100,
+            "Volatilidad anualizada (%)": annual_volatility * 100,
+            "Último precio": latest_values
+        })
+
+        st.dataframe(
+            executive_table.round(2),
+            use_container_width=True
+        )
+
+        st.subheader("📈 Comparación de rentabilidad y riesgo")
+
+        dashboard_chart = pd.DataFrame({
+            "Rentabilidad (%)": annual_returns * 100,
+            "Volatilidad (%)": annual_volatility * 100
+        })
+
+        st.scatter_chart(
+            dashboard_chart,
+            x="Volatilidad (%)",
+            y="Rentabilidad (%)"
+        )
+
+        st.subheader("🏆 Clasificación histórica")
+
+        ranking = annual_returns.sort_values(ascending=False)
+
+        st.bar_chart(ranking * 100)
+
+        st.caption(
+            "La clasificación refleja exclusivamente el rendimiento "
+            "histórico anualizado de los datos disponibles."
+        )
+
+    else:
+        st.warning("No hay datos suficientes para construir el dashboard.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
