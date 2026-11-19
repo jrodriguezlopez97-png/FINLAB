@@ -120,8 +120,7 @@ if errors:
             st.warning(f"{ticker}: {message}")
 
 
-
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive, tab_doctor = st.tabs([
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive, tab_doctor, tab_stress = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
@@ -133,7 +132,8 @@ tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_
     "🌐 Market Intelligence",
     "🔬 AI Research Lab",
     "🚀 Executive Dashboard",
-    "🩺 AI Portfolio Doctor"
+    "🩺 AI Portfolio Doctor",
+    "⚡ Stress Testing Lab"
 ])
 
 
@@ -1327,6 +1327,117 @@ with tab_doctor:
         st.caption(
             "Las métricas describen el pasado y no predicen resultados futuros."
         )
+
+    else:
+        st.warning("Selecciona al menos un activo.")
+
+
+with tab_stress:
+    st.header("⚡ FINLAB Stress Testing Lab")
+    st.caption("Simulación de escenarios hipotéticos de mercado")
+
+    st.info(
+        "Los escenarios son hipotéticos y educativos. "
+        "No representan predicciones del mercado."
+    )
+
+    stress_assets = list(returns.columns)
+
+    selected_stress_assets = st.multiselect(
+        "Selecciona los activos",
+        stress_assets,
+        default=stress_assets[:min(3, len(stress_assets))],
+        key="stress_assets"
+    )
+
+    if selected_stress_assets:
+        stress_weights = np.ones(len(selected_stress_assets))
+        stress_weights = stress_weights / stress_weights.sum()
+
+        scenarios = [-5, -10, -20, -30]
+
+        st.subheader("1. Configuración de escenarios")
+
+        scenario_choice = st.multiselect(
+            "Escenarios de caída hipotética (%)",
+            scenarios,
+            default=scenarios,
+            key="stress_scenarios"
+        )
+
+        if scenario_choice:
+            st.subheader("2. Impacto estimado")
+
+            scenario_results = []
+
+            for scenario in scenario_choice:
+                impact = scenario / 100
+
+                scenario_results.append({
+                    "Escenario (%)": scenario,
+                    "Impacto cartera (%)": impact * 100,
+                    "Valor final por cada 10.000 unidades": 10000 * (1 + impact)
+                })
+
+            scenario_df = pd.DataFrame(scenario_results)
+
+            st.dataframe(
+                scenario_df.round(2),
+                use_container_width=True
+            )
+
+            st.subheader("3. Comparación visual")
+
+            chart_df = scenario_df.set_index("Escenario (%)")[
+                ["Impacto cartera (%)"]
+            ]
+
+            st.bar_chart(chart_df)
+
+            st.subheader("4. Impacto por activo")
+
+            asset_impacts = pd.DataFrame({
+                "Activo": selected_stress_assets,
+                "Peso simulado (%)": stress_weights * 100,
+                "Impacto individual (%)": [
+                    scenario_choice[0] for _ in selected_stress_assets
+                ]
+            })
+
+            st.dataframe(
+                asset_impacts.round(2),
+                use_container_width=True
+            )
+
+            st.subheader("5. Resumen del laboratorio")
+
+            st.write(
+                f"Se han analizado {len(selected_stress_assets)} activos "
+                f"con pesos iguales simulados."
+            )
+
+            st.write(
+                f"Se han evaluado {len(scenario_choice)} escenarios "
+                "hipotéticos."
+            )
+
+            st.caption(
+                "Este modelo aplica una caída uniforme a todos los activos. "
+                "No incorpora correlaciones cambiantes, liquidez ni "
+                "reacciones reales del mercado."
+            )
+
+            csv_data = scenario_df.to_csv(index=False).encode("utf-8")
+
+            st.download_button(
+                "📥 Descargar escenarios CSV",
+                data=csv_data,
+                file_name="FINLAB_Stress_Testing.csv",
+                mime="text/csv"
+            )
+
+        else:
+            st.warning("Selecciona al menos un escenario.")
 
     else:
         st.warning("Selecciona al menos un activo.")
