@@ -2787,5 +2787,83 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("19. FINLAB Global Market Dashboard")
+    st.caption("Comparación global de mercados y activos")
+
+    global_assets = st.multiselect(
+        "Selecciona mercados o activos",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_global_assets"
+    )
+
+    if len(global_assets) >= 1:
+
+        global_data = returns[global_assets].dropna()
+
+        if len(global_data) >= 2:
+
+            st.subheader("Rendimiento acumulado")
+
+            global_cumulative = (
+                (1 + global_data).cumprod() - 1
+            ) * 100
+
+            st.line_chart(global_cumulative)
+
+            st.subheader("Comparación de indicadores")
+
+            global_metrics = []
+
+            for asset in global_assets:
+
+                asset_returns = global_data[asset]
+
+                total_return = (
+                    ((1 + asset_returns).prod() - 1) * 100
+                )
+
+                annual_volatility = (
+                    asset_returns.std() * (252 ** 0.5) * 100
+                )
+
+                positive_days = (
+                    (asset_returns > 0).mean() * 100
+                )
+
+                global_metrics.append({
+                    "Activo": asset,
+                    "Rendimiento acumulado (%)": total_return,
+                    "Volatilidad anualizada (%)": annual_volatility,
+                    "Días positivos (%)": positive_days
+                })
+
+            global_metrics_df = pd.DataFrame(global_metrics)
+
+            st.dataframe(
+                global_metrics_df.round(2),
+                use_container_width=True
+            )
+
+            st.subheader("Rendimiento acumulado por activo")
+
+            st.bar_chart(
+                global_metrics_df.set_index("Activo")[
+                    "Rendimiento acumulado (%)"
+                ]
+            )
+
+            st.caption(
+                "Los resultados comparan exclusivamente los activos "
+                "seleccionados y disponibles en FINLAB. No representan "
+                "una visión completa de todos los mercados mundiales."
+            )
+
+        else:
+            st.warning("No hay suficientes datos para comparar los activos.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
