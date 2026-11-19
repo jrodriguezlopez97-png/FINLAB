@@ -127,6 +127,7 @@ tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio = st.
     "ⓘ Guía",
     "🧠 FINLAB AI Analyst",
     "📊 Portfolio Simulator"
+    "🛡️ Risk Intelligence"
 ])
 
 with tab_market:
@@ -521,6 +522,245 @@ with tab_portfolio:
             "con rebalanceo diario implícito. No se incluyen "
             "comisiones, impuestos ni deslizamiento. "
             "Los resultados históricos no predicen el futuro."
+        )
+
+
+with tab_risk_center:
+    st.subheader("🛡️ FINLAB Risk Intelligence Center")
+    st.caption("Pruebas históricas de resistencia y diversificación.")
+
+    st.info(
+        "Los escenarios se calculan con rendimientos históricos. "
+        "No representan pérdidas máximas posibles ni predicen el futuro."
+    )
+
+    risk_assets = st.multiselect(
+        "Activos para el análisis",
+        returns.columns.tolist(),
+        default=returns.columns.tolist(),
+        key="risk_center_assets"
+    )
+
+    window = st.selectbox(
+        "Duración del escenario histórico",
+        [5, 10, 20, 60],
+        index=2,
+        format_func=lambda x: f"{x} sesiones",
+        key="risk_center_window"
+    )
+
+    if not risk_assets:
+        st.warning("Selecciona al menos un activo.")
+
+    elif len(returns) <= window:
+        st.warning("No hay suficientes datos para este periodo.")
+
+    else:
+        st.markdown("### 1. Pesos hipotéticos")
+
+        raw_risk_weights = {}
+
+        default_risk_weight = round(
+            100 / len(risk_assets)
+        )
+
+        for ticker in risk_assets:
+            raw_risk_weights[ticker] = st.slider(
+                f"Peso de {ticker} (%)",
+                0, 100,
+                default_risk_weight,
+                key=f"risk_weight_{ticker}"
+            )
+
+        total_risk_weight = sum(
+            raw_risk_weights.values()
+        )
+
+        if total_risk_weight == 0:
+            risk_weights = pd.Series(
+                1 / len(risk_assets),
+                index=risk_assets
+            )
+        else:
+            risk_weights = (
+                pd.Series(raw_risk_weights) /
+                total_risk_weight
+            )
+
+        selected_returns = (
+            returns[risk_assets].dropna()
+        )
+
+        portfolio_risk_returns = (
+            selected_returns @ risk_weights
+        )
+
+        st.markdown("### 2. Concentración de cartera")
+
+        hhi = float((risk_weights ** 2).sum())
+        effective_assets = 1 / hhi if hhi > 0 else 0
+
+        c1, c2 = st.columns(2)
+
+        c1.metric(
+            "Índice de concentración HHI",
+            f"{hhi:.3f}"
+        )
+
+        c2.metric(
+            "Número efectivo de posiciones",
+            f"{effective_assets:.2f}"
+        )
+
+        st.caption(
+            "El HHI suma los cuadrados de los pesos. "
+            "Cuanto mayor es, más concentrada está la distribución. "
+            "El número efectivo es su inverso."
+        )
+
+        st.markdown("### 3. Diversificación")
+
+        individual_vols = (
+            selected_returns.std() * np.sqrt(252)
+        )
+
+        portfolio_volatility = (
+            portfolio_risk_returns.std() * np.sqrt(252)
+        )
+
+        weighted_volatility = float(
+            (individual_vols * risk_weights).sum()
+        )
+
+        diversification_ratio = (
+            weighted_volatility / portfolio_volatility
+            if portfolio_volatility > 0 else np.nan
+        )
+
+        st.metric(
+            "Ratio de diversificación",
+            f"{diversification_ratio:.2f}"
+            if pd.notna(diversification_ratio)
+            else "No disponible"
+        )
+
+        st.caption(
+            "Compara la volatilidad ponderada de los activos "
+            "con la volatilidad de la cartera. Un valor superior "
+            "a 1 puede reflejar beneficios de diversificación."
+        )
+
+        st.markdown("### 4. Stress testing histórico")
+
+        def rolling_compound(series, period):
+            return (
+                (1 + series)
+                .rolling(period)
+                .apply(np.prod, raw=True) - 1
+            ).dropna()
+
+        portfolio_windows = rolling_compound(
+            portfolio_risk_returns,
+            window
+        )
+
+        worst_end = portfolio_windows.idxmin()
+        worst_position = (
+            portfolio_risk_returns.index.get_loc(worst_end)
+        )
+        worst_start = max(0, worst_position - window + 1)
+
+        start_date = (
+            portfolio_risk_returns.index[worst_start]
+        )
+
+        worst_loss = portfolio_windows.min() * 100
+
+        c1, c2, c3 = st.columns(3)
+
+        c1.metric(
+            f"Peor periodo de {window} sesiones",
+            f"{worst_loss:.2f}%"
+        )
+
+        c2.metric(
+            "Inicio del periodo",
+            str(start_date.date())
+        )
+
+        c3.metric(
+            "Final del periodo",
+            str(worst_end.date())
+        )
+
+        st.markdown(
+            "### 5. Comparación de escenarios por activo"
+        )
+
+        stress_rows = []
+
+        for ticker in risk_assets:
+            asset_windows = rolling_compound(
+                selected_returns[ticker],
+                window
+            )
+
+            stress_rows.append({
+                "Activo": ticker,
+                "Peso (%)": risk_weights[ticker] * 100,
+                "Peor periodo (%)": asset_windows.min() * 100,
+                "Volatilidad anualizada (%)":
+                    selected_returns[ticker].std()
+                    * np.sqrt(252) * 100
+            })
+
+        stress_table = pd.DataFrame(
+            stress_rows
+        ).set_index("Activo")
+
+        st.dataframe(
+            stress_table.style.format("{:.2f}"),
+            use_container_width=True
+        )
+
+        f = px.bar(
+            stress_table.reset_index(),
+            x="Activo",
+            y="Peor periodo (%)",
+            color="Peor periodo (%)",
+            template="plotly_dark",
+            title=f"Peor rendimiento histórico en {window} sesiones"
+        )
+
+        f.update_layout(height=350)
+        st.plotly_chart(f, use_container_width=True)
+
+        st.markdown("### 6. Evolución de la volatilidad")
+
+        rolling_volatility = (
+            portfolio_risk_returns
+            .rolling(20)
+            .std() * np.sqrt(252) * 100
+        ).dropna()
+
+        f = px.line(
+            x=rolling_volatility.index,
+            y=rolling_volatility.values,
+            labels={
+                "x": "Fecha",
+                "y": "Volatilidad anualizada (%)"
+            },
+            template="plotly_dark",
+            title="Volatilidad móvil de 20 sesiones"
+        )
+
+        f.update_layout(height=350)
+        st.plotly_chart(f, use_container_width=True)
+
+        st.caption(
+            "FINLAB Risk Intelligence V1 · Los resultados no "
+            "incluyen costes, impuestos ni cambios futuros de "
+            "correlación. Las ventanas históricas se solapan."
         )
 
 st.divider()
