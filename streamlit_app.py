@@ -3409,5 +3409,99 @@ with tab_v11:
 
     else:
         st.warning("Se necesitan al menos 50 observaciones.")
+    st.divider()
+    st.subheader("25. FINLAB Quantitative Research Lab")
+    st.caption("Laboratorio de investigación cuantitativa")
+
+    research_assets = st.multiselect(
+        "Selecciona activos para investigar",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_research_assets"
+    )
+
+    if len(research_assets) >= 2:
+
+        research_data = returns[research_assets].dropna()
+
+        if len(research_data) >= 30:
+
+            research_metrics = []
+
+            for asset in research_assets:
+
+                asset_returns = research_data[asset]
+
+                annual_return = (
+                    (1 + asset_returns).prod()
+                    ** (252 / len(asset_returns)) - 1
+                ) * 100
+
+                annual_volatility = (
+                    asset_returns.std() * (252 ** 0.5) * 100
+                )
+
+                research_metrics.append({
+                    "Activo": asset,
+                    "Rentabilidad anualizada (%)": annual_return,
+                    "Volatilidad anualizada (%)": annual_volatility
+                })
+
+            research_df = pd.DataFrame(research_metrics)
+
+            st.subheader("Comparación cuantitativa")
+
+            st.dataframe(
+                research_df.round(2),
+                use_container_width=True
+            )
+
+            st.subheader("Relación entre rentabilidad y riesgo")
+
+            st.scatter_chart(
+                research_df,
+                x="Volatilidad anualizada (%)",
+                y="Rentabilidad anualizada (%)",
+                color="Activo"
+            )
+
+            st.subheader("Matriz de correlaciones")
+
+            research_correlation = research_data.corr()
+
+            st.dataframe(
+                research_correlation.round(3),
+                use_container_width=True
+            )
+
+            st.subheader("Resumen estadístico")
+
+            st.write(
+                "Activo con mayor rentabilidad histórica:",
+                research_df.loc[
+                    research_df["Rentabilidad anualizada (%)"].idxmax(),
+                    "Activo"
+                ]
+            )
+
+            st.write(
+                "Activo con menor volatilidad histórica:",
+                research_df.loc[
+                    research_df["Volatilidad anualizada (%)"].idxmin(),
+                    "Activo"
+                ]
+            )
+
+            st.caption(
+                "Análisis estadístico basado en datos históricos. "
+                "Los resultados no constituyen predicciones ni "
+                "recomendaciones de inversión."
+            )
+
+        else:
+            st.warning("Se necesitan al menos 30 observaciones.")
+
+    else:
+        st.info("Selecciona al menos dos activos.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
