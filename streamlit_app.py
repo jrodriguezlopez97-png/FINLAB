@@ -2592,5 +2592,92 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("17. FINLAB Risk Monitor")
+    st.caption("Monitorización de riesgos basada en datos históricos")
+
+    risk_monitor_assets = st.multiselect(
+        "Selecciona activos para monitorizar",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_risk_monitor_assets"
+    )
+
+    if len(risk_monitor_assets) >= 1:
+
+        monitor_data = returns[risk_monitor_assets].dropna()
+
+        if len(monitor_data) >= 20:
+
+            monitor_returns = monitor_data.mean(axis=1)
+
+            annual_vol = monitor_returns.std() * (252 ** 0.5) * 100
+
+            worst_daily = monitor_returns.min() * 100
+
+            cumulative = (1 + monitor_returns).cumprod()
+
+            running_max = cumulative.cummax()
+
+            drawdown = (
+                (cumulative / running_max) - 1
+            ) * 100
+
+            max_drawdown = drawdown.min()
+
+            st.subheader("Indicadores de riesgo")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric(
+                    "Volatilidad anualizada",
+                    f"{annual_vol:.2f}%"
+                )
+
+            with col2:
+                st.metric(
+                    "Peor día",
+                    f"{worst_daily:.2f}%"
+                )
+
+            with col3:
+                st.metric(
+                    "Caída máxima",
+                    f"{max_drawdown:.2f}%"
+                )
+
+            st.subheader("Estado de monitorización")
+
+            if annual_vol >= 30:
+                st.warning("Volatilidad histórica elevada.")
+            else:
+                st.success("Volatilidad histórica por debajo del umbral.")
+
+            if worst_daily <= -5:
+                st.warning("Se ha observado una caída diaria importante.")
+            else:
+                st.success("No se ha superado el umbral de caída diaria.")
+
+            if max_drawdown <= -20:
+                st.warning("La caída máxima histórica ha superado el 20%.")
+            else:
+                st.success("La caída máxima histórica no ha superado el 20%.")
+
+            st.subheader("Evolución del drawdown")
+
+            st.line_chart(drawdown)
+
+            st.caption(
+                "Los umbrales son ilustrativos. Las alertas describen "
+                "datos históricos y no constituyen recomendaciones "
+                "financieras ni predicciones."
+            )
+
+        else:
+            st.warning("Se necesitan al menos 20 observaciones.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
