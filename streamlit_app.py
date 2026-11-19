@@ -119,7 +119,9 @@ if errors:
         for ticker, message in errors.items():
             st.warning(f"{ticker}: {message}")
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center = st.tabs([
+tab_market_intel = None
+
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
@@ -127,7 +129,8 @@ tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_
     "ⓘ Guía",
     "🧠 FINLAB AI Analyst",
     "📊 Portfolio Simulator",
-    "🛡️ Risk Intelligence"
+    "🛡️ Risk Intelligence",
+    "🌐 Market Intelligence"
 ])
 
 with tab_market:
@@ -762,6 +765,265 @@ with tab_risk_center:
             "incluyen costes, impuestos ni cambios futuros de "
             "correlación. Las ventanas históricas se solapan."
         )
+
+
+with tab_market_intel:
+    st.subheader("🌐 FINLAB Market Intelligence Center")
+    st.caption("Indicadores técnicos y análisis histórico del mercado.")
+
+    st.info(
+        "Los indicadores técnicos describen precios pasados. "
+        "No predicen con certeza los movimientos futuros."
+    )
+
+    technical_assets = st.multiselect(
+        "Selecciona activos",
+        prices.columns.tolist(),
+        default=list(prices.columns),
+        key="technical_assets"
+    )
+
+    if not technical_assets:
+        st.warning("Selecciona al menos un activo.")
+
+    else:
+        selected_technical = st.selectbox(
+            "Activo para el análisis detallado",
+            technical_assets,
+            key="selected_technical"
+        )
+
+        price_series = (
+            prices[selected_technical]
+            .dropna()
+            .astype(float)
+        )
+
+        if len(price_series) < 30:
+            st.warning(
+                "Se necesitan al menos 30 sesiones "
+                "para calcular los indicadores."
+            )
+
+        else:
+            # Medias móviles
+            sma20 = price_series.rolling(20).mean()
+            sma50 = price_series.rolling(50).mean()
+            sma200 = price_series.rolling(200).mean()
+
+            # RSI de 14 sesiones
+            delta = price_series.diff()
+
+            gains = delta.clip(lower=0)
+            losses = -delta.clip(upper=0)
+
+            avg_gain = gains.ewm(
+                alpha=1/14,
+                adjust=False,
+                min_periods=14
+            ).mean()
+
+            avg_loss = losses.ewm(
+                alpha=1/14,
+                adjust=False,
+                min_periods=14
+            ).mean()
+
+            rs = avg_gain / avg_loss.replace(0, np.nan)
+            rsi = 100 - (100 / (1 + rs))
+
+            # Si no hubo pérdidas en el periodo,
+            # el RSI se aproxima a 100.
+            rsi = rsi.mask(
+                (avg_loss == 0) & (avg_gain > 0),
+                100
+            )
+
+            # MACD
+            ema12 = price_series.ewm(
+                span=12,
+                adjust=False
+            ).mean()
+
+            ema26 = price_series.ewm(
+                span=26,
+                adjust=False
+            ).mean()
+
+            macd = ema12 - ema26
+
+            signal = macd.ewm(
+                span=9,
+                adjust=False
+            ).mean()
+
+            histogram = macd - signal
+
+            # Volatilidad móvil de 20 sesiones
+            asset_returns = (
+                price_series.pct_change()
+                .replace([np.inf, -np.inf], np.nan)
+                .dropna()
+            )
+
+            rolling_vol = (
+                asset_returns.rolling(20).std()
+                * np.sqrt(252) * 100
+            )
+
+            st.markdown("### 1. Indicadores actuales")
+
+            latest_rsi = rsi.iloc[-1]
+            latest_macd = macd.iloc[-1]
+            latest_signal = signal.iloc[-1]
+            latest_vol = rolling_vol.iloc[-1]
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "RSI (14)",
+                f"{latest_rsi:.2f}"
+                if pd.notna(latest_rsi)
+                else "No disponible"
+            )
+
+            c2.metric(
+                "MACD",
+                f"{latest_macd:.4f}"
+            )
+
+            c3.metric(
+                "Volatilidad móvil",
+                f"{latest_vol:.2f}%"
+                if pd.notna(latest_vol)
+                else "No disponible"
+            )
+
+            st.markdown("### 2. Medias móviles")
+
+            ma_data = pd.DataFrame({
+                "Precio": price_series,
+                "SMA 20": sma20,
+                "SMA 50": sma50,
+                "SMA 200": sma200
+            })
+
+            f = px.line(
+                ma_data,
+                template="plotly_dark",
+                title=f"Precio y medias móviles · {selected_technical}"
+            )
+
+            f.update_layout(height=430)
+            st.plotly_chart(f, use_container_width=True)
+
+            st.markdown("### 3. RSI")
+
+            rsi_data = pd.DataFrame({
+                "RSI": rsi
+            })
+
+            f = px.line(
+                rsi_data,
+                template="plotly_dark",
+                title="Índice de fuerza relativa · 14 sesiones"
+            )
+
+            f.add_hline(y=70, line_dash="dash")
+            f.add_hline(y=30, line_dash="dash")
+
+            f.update_yaxes(range=[0, 100])
+            f.update_layout(height=320)
+
+            st.plotly_chart(f, use_container_width=True)
+
+            st.caption(
+                "Como referencia convencional, RSI superior a 70 "
+                "se considera elevado e inferior a 30 se considera bajo. "
+                "No son señales automáticas."
+            )
+
+            st.markdown("### 4. MACD")
+
+            macd_data = pd.DataFrame({
+                "MACD": macd,
+                "Señal": signal,
+                "Histograma": histogram
+            })
+
+            f = px.line(
+                macd_data[["MACD", "Señal"]],
+                template="plotly_dark",
+                title="MACD y línea de señal"
+            )
+
+            f.update_layout(height=330)
+            st.plotly_chart(f, use_container_width=True)
+
+            f = px.bar(
+                macd_data.reset_index(),
+                x="Date",
+                y="Histograma",
+                template="plotly_dark",
+                title="Histograma MACD"
+            )
+
+            f.update_layout(height=280)
+            st.plotly_chart(f, use_container_width=True)
+
+            st.markdown("### 5. Resumen técnico")
+
+            if pd.notna(latest_rsi):
+                if latest_rsi >= 70:
+                    st.warning(
+                        "RSI elevado: el movimiento reciente "
+                        "ha sido intenso en términos históricos."
+                    )
+                elif latest_rsi <= 30:
+                    st.warning(
+                        "RSI bajo: el movimiento reciente "
+                        "ha sido débil en términos históricos."
+                    )
+                else:
+                    st.info(
+                        "RSI dentro del intervalo convencional "
+                        "de 30 a 70."
+                    )
+
+            if latest_macd > latest_signal:
+                st.write(
+                    "MACD: está por encima de su línea de señal."
+                )
+            else:
+                st.write(
+                    "MACD: está por debajo de su línea de señal."
+                )
+
+            if (
+                pd.notna(sma50.iloc[-1])
+                and pd.notna(sma200.iloc[-1])
+            ):
+                if sma50.iloc[-1] > sma200.iloc[-1]:
+                    st.write(
+                        "Medias móviles: SMA 50 por encima "
+                        "de SMA 200 en la última sesión."
+                    )
+                else:
+                    st.write(
+                        "Medias móviles: SMA 50 por debajo "
+                        "de SMA 200 en la última sesión."
+                    )
+            else:
+                st.write(
+                    "Medias móviles: historial insuficiente "
+                    "para comparar SMA 50 y SMA 200."
+                )
+
+            st.caption(
+                "FINLAB Market Intelligence V1 · "
+                "Indicadores descriptivos, sin recomendaciones "
+                "de inversión."
+            )
 
 st.divider()
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
