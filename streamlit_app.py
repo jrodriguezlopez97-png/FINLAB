@@ -1604,13 +1604,9 @@ with tab_v11:
         st.subheader("2. Mapa visual de correlaciones")
 
         st.dataframe(
-            correlation_matrix.style.background_gradient(
-                cmap="RdYlGn",
-                vmin=-1,
-                vmax=1
-            ).format("{:.2f}"),
-            use_container_width=True
-        )
+    correlation_matrix.round(2),
+    use_container_width=True
+)
 
         st.subheader("3. Relaciones más destacadas")
 
