@@ -2996,5 +2996,148 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("21. FINLAB Institutional Report Generator")
+    st.caption("Generador de informes cuantitativos en PDF")
+
+    report_assets = st.multiselect(
+        "Selecciona activos para el informe",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_report_assets"
+    )
+
+    if len(report_assets) >= 1:
+
+        report_data = returns[report_assets].dropna()
+
+        if len(report_data) >= 20:
+
+            report_portfolio = report_data.mean(axis=1)
+
+            report_cumulative = (1 + report_portfolio).cumprod()
+
+            report_total_return = (
+                (report_cumulative.iloc[-1] - 1) * 100
+            )
+
+            report_volatility = (
+                report_portfolio.std() * (252 ** 0.5) * 100
+            )
+
+            report_running_max = report_cumulative.cummax()
+
+            report_drawdown = (
+                report_cumulative / report_running_max - 1
+            )
+
+            report_max_drawdown = report_drawdown.min() * 100
+
+            report_summary = pd.DataFrame({
+                "Indicador": [
+                    "Rendimiento acumulado",
+                    "Volatilidad anualizada",
+                    "Drawdown máximo",
+                    "Días positivos"
+                ],
+                "Resultado": [
+                    f"{report_total_return:.2f}%",
+                    f"{report_volatility:.2f}%",
+                    f"{report_max_drawdown:.2f}%",
+                    f"{(report_portfolio > 0).mean() * 100:.2f}%"
+                ]
+            })
+
+            st.subheader("Vista previa del informe")
+
+            st.dataframe(
+                report_summary,
+                use_container_width=True
+            )
+
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4
+            from reportlab.platypus import (
+                SimpleDocTemplate,
+                Paragraph,
+                Spacer,
+                Table,
+                TableStyle
+            )
+            from reportlab.lib.styles import getSampleStyleSheet
+            from io import BytesIO
+
+            pdf_buffer = BytesIO()
+
+            pdf_document = SimpleDocTemplate(
+                pdf_buffer,
+                pagesize=A4
+            )
+
+            styles = getSampleStyleSheet()
+
+            report_elements = [
+                Paragraph(
+                    "FINLAB - Institutional Quantitative Report",
+                    styles["Title"]
+                ),
+                Spacer(1, 20),
+                Paragraph(
+                    "Educational historical market analysis",
+                    styles["Normal"]
+                ),
+                Spacer(1, 15),
+                Paragraph(
+                    "Selected assets: " + ", ".join(report_assets),
+                    styles["Normal"]
+                ),
+                Spacer(1, 20)
+            ]
+
+            table_data = [
+                ["Indicator", "Result"]
+            ] + report_summary.values.tolist()
+
+            report_table = Table(
+                table_data,
+                colWidths=[250, 180]
+            )
+
+            report_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.darkblue),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("PADDING", (0, 0), (-1, -1), 8)
+            ]))
+
+            report_elements.append(report_table)
+
+            report_elements.extend([
+                Spacer(1, 25),
+                Paragraph(
+                    "This report is educational and based on historical "
+                    "data. It is not investment advice or a prediction "
+                    "of future performance.",
+                    styles["Normal"]
+                )
+            ])
+
+            pdf_document.build(report_elements)
+
+            pdf_buffer.seek(0)
+
+            st.download_button(
+                label="📄 Descargar informe FINLAB PDF",
+                data=pdf_buffer.getvalue(),
+                file_name="FINLAB_Institutional_Report.pdf",
+                mime="application/pdf",
+                key="v13_institutional_pdf"
+            )
+
+        else:
+            st.warning("No hay suficientes datos para generar el informe.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
