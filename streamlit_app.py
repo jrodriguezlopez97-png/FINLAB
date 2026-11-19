@@ -2241,5 +2241,89 @@ with tab_v11:
 
     else:
         st.warning("Se necesitan al menos 60 observaciones.")
+    st.divider()
+    st.subheader("13. Scenario Simulator")
+    st.caption("Simulación educativa de escenarios hipotéticos")
+
+    scenario_asset = st.selectbox(
+        "Selecciona un activo",
+        institutional_assets,
+        key="v13_scenario_asset"
+    )
+
+    st.write("Define tres escenarios hipotéticos (%)")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        scenario_1 = st.number_input(
+            "Escenario negativo",
+            min_value=-100.0,
+            max_value=100.0,
+            value=-10.0,
+            step=1.0,
+            key="v13_scenario_1"
+        )
+
+    with col2:
+        scenario_2 = st.number_input(
+            "Escenario neutral",
+            min_value=-100.0,
+            max_value=100.0,
+            value=0.0,
+            step=1.0,
+            key="v13_scenario_2"
+        )
+
+    with col3:
+        scenario_3 = st.number_input(
+            "Escenario positivo",
+            min_value=-100.0,
+            max_value=100.0,
+            value=10.0,
+            step=1.0,
+            key="v13_scenario_3"
+        )
+
+    initial_value = 100.0
+
+    scenario_results = pd.DataFrame({
+        "Escenario": [
+            "Negativo",
+            "Neutral",
+            "Positivo"
+        ],
+        "Cambio hipotético (%)": [
+            scenario_1,
+            scenario_2,
+            scenario_3
+        ]
+    })
+
+    scenario_results["Valor simulado"] = (
+        initial_value *
+        (1 + scenario_results["Cambio hipotético (%)"] / 100)
+    )
+
+    scenario_results["Variación"] = (
+        scenario_results["Valor simulado"] - initial_value
+    )
+
+    st.subheader("Resultados de simulación")
+
+    st.dataframe(
+        scenario_results.round(2),
+        use_container_width=True
+    )
+
+    st.bar_chart(
+        scenario_results.set_index("Escenario")["Valor simulado"]
+    )
+
+    st.caption(
+        "Se utiliza un valor inicial ilustrativo de 100 unidades. "
+        "Los escenarios son hipotéticos y no representan predicciones "
+        "ni recomendaciones de inversión."
+    )
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
