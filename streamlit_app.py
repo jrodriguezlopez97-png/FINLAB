@@ -1812,5 +1812,65 @@ with tab_v11:
                 "El indicador mide concentración de pesos, "
                 "no garantiza una reducción del riesgo."
             )
+    st.divider()
+    st.subheader("8. Asset Clustering")
+    st.caption("Agrupación de activos según sus rendimientos históricos")
+
+    clustering_assets = st.multiselect(
+        "Selecciona activos para agrupar",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v12_clustering_assets"
+    )
+
+    n_clusters = st.slider(
+        "Número de grupos",
+        min_value=2,
+        max_value=min(5, len(clustering_assets)),
+        value=2,
+        key="v12_n_clusters"
+    ) if len(clustering_assets) >= 2 else 2
+
+    if len(clustering_assets) >= 2:
+        from sklearn.cluster import KMeans
+        from sklearn.preprocessing import StandardScaler
+
+        clustering_data = (
+            returns[clustering_assets]
+            .dropna()
+            .T
+        )
+
+        if clustering_data.shape[1] >= 2:
+            scaler = StandardScaler()
+            scaled_data = scaler.fit_transform(clustering_data)
+
+            model = KMeans(
+                n_clusters=n_clusters,
+                random_state=42,
+                n_init=10
+            )
+
+            labels = model.fit_predict(scaled_data)
+
+            clustering_results = pd.DataFrame({
+                "Activo": clustering_assets,
+                "Grupo": labels + 1
+            })
+
+            st.dataframe(
+                clustering_results,
+                use_container_width=True
+            )
+
+            st.subheader("Distribución de grupos")
+
+            st.bar_chart(
+                clustering_results["Grupo"].value_counts().sort_index()
+            )
+        else:
+            st.warning("No hay suficientes observaciones.")
+    else:
+        st.info("Selecciona al menos dos activos.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
