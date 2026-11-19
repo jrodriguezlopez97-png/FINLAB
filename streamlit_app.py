@@ -2679,5 +2679,113 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("18. FINLAB AI Insights Engine")
+    st.caption("Generador automático de observaciones cuantitativas")
+
+    insights_assets = st.multiselect(
+        "Selecciona activos para analizar",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_insights_assets"
+    )
+
+    if len(insights_assets) >= 1:
+
+        insights_data = returns[insights_assets].dropna()
+
+        if len(insights_data) >= 20:
+
+            insights_portfolio = insights_data.mean(axis=1)
+
+            annual_volatility = (
+                insights_portfolio.std() * (252 ** 0.5) * 100
+            )
+
+            cumulative = (1 + insights_portfolio).cumprod()
+
+            total_return = (cumulative.iloc[-1] - 1) * 100
+
+            running_max = cumulative.cummax()
+
+            drawdown = (
+                (cumulative / running_max) - 1
+            ) * 100
+
+            max_drawdown = drawdown.min()
+
+            positive_days = (
+                insights_portfolio > 0
+            ).mean() * 100
+
+            st.subheader("FINLAB generated insights")
+
+            if total_return > 0:
+                st.success(
+                    f"Rendimiento acumulado positivo: {total_return:.2f}%."
+                )
+            elif total_return < 0:
+                st.warning(
+                    f"Rendimiento acumulado negativo: {total_return:.2f}%."
+                )
+            else:
+                st.info("El rendimiento acumulado se encuentra en torno a cero.")
+
+            if annual_volatility > 30:
+                st.warning(
+                    "La volatilidad histórica es elevada."
+                )
+            else:
+                st.info(
+                    "La volatilidad histórica está por debajo del 30%."
+                )
+
+            if max_drawdown < -20:
+                st.warning(
+                    f"La caída máxima histórica ha sido del {max_drawdown:.2f}%."
+                )
+            else:
+                st.success(
+                    "La caída máxima histórica no ha superado el 20%."
+                )
+
+            st.info(
+                f"Porcentaje de días con rendimiento positivo: "
+                f"{positive_days:.1f}%."
+            )
+
+            st.subheader("Resumen cuantitativo")
+
+            insights_summary = pd.DataFrame({
+                "Indicador": [
+                    "Rendimiento acumulado",
+                    "Volatilidad anualizada",
+                    "Caída máxima",
+                    "Días positivos"
+                ],
+                "Resultado": [
+                    f"{total_return:.2f}%",
+                    f"{annual_volatility:.2f}%",
+                    f"{max_drawdown:.2f}%",
+                    f"{positive_days:.1f}%"
+                ]
+            })
+
+            st.dataframe(
+                insights_summary,
+                use_container_width=True
+            )
+
+            st.caption(
+                "Este motor utiliza reglas estadísticas programadas. "
+                "No es un modelo de inteligencia artificial generativa "
+                "ni ofrece predicciones financieras."
+            )
+
+        else:
+            st.warning("No hay suficientes datos históricos.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
