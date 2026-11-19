@@ -1733,5 +1733,84 @@ with tab_v11:
         mime="text/csv",
         key="v12_covariance_download"
     )
+    st.divider()
+    st.subheader("7. Diversification Score")
+
+    st.caption("Análisis de diversificación con pesos iguales o personalizados")
+
+    diversification_mode = st.radio(
+        "Método de ponderación",
+        ["Equal Weight", "Custom Weight"],
+        horizontal=True,
+        key="v12_diversification_mode"
+    )
+
+    n_assets = len(selected_institutional)
+
+    if n_assets >= 2:
+
+        if diversification_mode == "Equal Weight":
+            portfolio_weights = pd.Series(
+                1 / n_assets,
+                index=selected_institutional
+            )
+
+        else:
+            st.write("Asigna un peso a cada activo (%)")
+
+            custom_weights = {}
+
+            for asset in selected_institutional:
+                custom_weights[asset] = st.number_input(
+                    f"Peso de {asset} (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=float(round(100 / n_assets, 2)),
+                    step=1.0,
+                    key=f"v12_weight_{asset}"
+                )
+
+            total_weight = sum(custom_weights.values())
+
+            if total_weight > 0:
+                portfolio_weights = pd.Series(custom_weights) / total_weight
+            else:
+                portfolio_weights = None
+
+        if portfolio_weights is not None:
+
+            hhi = float((portfolio_weights ** 2).sum())
+            effective_assets = 1 / hhi
+            diversification_score = (
+                1 - (hhi - 1/n_assets) / (1 - 1/n_assets)
+            ) * 100
+
+            st.metric(
+                "Diversification Score",
+                f"{diversification_score:.1f}/100"
+            )
+
+            st.metric(
+                "Número efectivo de activos",
+                f"{effective_assets:.2f}"
+            )
+
+            st.metric(
+                "Índice HHI",
+                f"{hhi:.4f}"
+            )
+
+            st.subheader("Distribución de pesos")
+
+            weights_display = (
+                portfolio_weights * 100
+            ).round(2)
+
+            st.bar_chart(weights_display)
+
+            st.caption(
+                "El indicador mide concentración de pesos, "
+                "no garantiza una reducción del riesgo."
+            )
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
