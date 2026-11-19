@@ -119,14 +119,14 @@ if errors:
         for ticker, message in errors.items():
             st.warning(f"{ticker}: {message}")
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio = st.tabs([
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
     "▤ Datos",
     "ⓘ Guía",
     "🧠 FINLAB AI Analyst",
-    "📊 Portfolio Simulator"
+    "📊 Portfolio Simulator",
     "🛡️ Risk Intelligence"
 ])
 
