@@ -1872,5 +1872,185 @@ with tab_v11:
             st.warning("No hay suficientes observaciones.")
     else:
         st.info("Selecciona al menos dos activos.")
+    st.divider()
+    st.subheader("9. FINLAB Quantitative Report")
+    st.caption("Generador de informes cuantitativos en PDF")
+
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import (
+        SimpleDocTemplate,
+        Paragraph,
+        Spacer,
+        Table,
+        TableStyle
+    )
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    if len(selected_institutional) >= 2:
+
+        pdf_buffer = BytesIO()
+
+        document = SimpleDocTemplate(
+            pdf_buffer,
+            pagesize=A4
+        )
+
+        styles = getSampleStyleSheet()
+        report_content = []
+
+        report_content.append(
+            Paragraph(
+                "FINLAB - Quantitative Intelligence Report",
+                styles["Title"]
+            )
+        )
+
+        report_content.append(Spacer(1, 15))
+
+        report_content.append(
+            Paragraph(
+                "Institutional Quantitative Analysis",
+                styles["Heading2"]
+            )
+        )
+
+        report_content.append(Spacer(1, 10))
+
+        report_content.append(
+            Paragraph(
+                f"Assets analyzed: {len(selected_institutional)}",
+                styles["Normal"]
+            )
+        )
+
+        report_content.append(Spacer(1, 15))
+
+        report_content.append(
+            Paragraph(
+                "Correlation Matrix",
+                styles["Heading2"]
+            )
+        )
+
+        corr_table_data = [
+            ["Asset"] + list(correlation_matrix.columns)
+        ]
+
+        for asset in correlation_matrix.index:
+            corr_table_data.append(
+                [asset] +
+                [
+                    round(float(value), 3)
+                    for value in correlation_matrix.loc[asset]
+                ]
+            )
+
+        corr_table = Table(
+            corr_table_data,
+            repeatRows=1
+        )
+
+        corr_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER")
+        ]))
+
+        report_content.append(corr_table)
+        report_content.append(Spacer(1, 20))
+
+        report_content.append(
+            Paragraph(
+                "Covariance Matrix (Annualized)",
+                styles["Heading2"]
+            )
+        )
+
+        covariance_data = [
+            ["Asset"] + list(covariance_matrix.columns)
+        ]
+
+        for asset in covariance_matrix.index:
+            covariance_data.append(
+                [asset] +
+                [
+                    round(float(value), 5)
+                    for value in covariance_matrix.loc[asset]
+                ]
+            )
+
+        covariance_table = Table(
+            covariance_data,
+            repeatRows=1
+        )
+
+        covariance_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER")
+        ]))
+
+        report_content.append(covariance_table)
+        report_content.append(Spacer(1, 20))
+
+        report_content.append(
+            Paragraph(
+                "Diversification Analysis",
+                styles["Heading2"]
+            )
+        )
+
+        report_content.append(
+            Paragraph(
+                "Diversification Score: "
+                + f"{diversification_score:.2f}/100",
+                styles["Normal"]
+            )
+        )
+
+        report_content.append(
+            Paragraph(
+                "Effective Assets: "
+                + f"{effective_assets:.2f}",
+                styles["Normal"]
+            )
+        )
+
+        report_content.append(
+            Paragraph(
+                "HHI: " + f"{hhi:.4f}",
+                styles["Normal"]
+            )
+        )
+
+        report_content.append(Spacer(1, 20))
+
+        report_content.append(
+            Paragraph(
+                "Historical statistical analysis only. "
+                "This report is educational and does not predict "
+                "future performance.",
+                styles["Italic"]
+            )
+        )
+
+        document.build(report_content)
+
+        st.download_button(
+            "📄 Descargar FINLAB Quantitative Report",
+            data=pdf_buffer.getvalue(),
+            file_name="FINLAB_Quantitative_Report.pdf",
+            mime="application/pdf",
+            key="v12_quantitative_pdf"
+        )
+
+    else:
+        st.info("Selecciona al menos dos activos para generar el informe.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
