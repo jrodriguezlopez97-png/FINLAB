@@ -2180,5 +2180,66 @@ with tab_v11:
         "Las medias móviles suavizan datos históricos. "
         "No garantizan la dirección futura del mercado."
     )
+    st.divider()
+    st.subheader("12. Volatility Forecast")
+    st.caption("Análisis de volatilidad histórica y estimaciones")
+
+    vol_asset = st.selectbox(
+        "Selecciona un activo",
+        institutional_assets,
+        key="v13_vol_asset"
+    )
+
+    vol_returns = returns[vol_asset].dropna()
+
+    if len(vol_returns) >= 60:
+
+        volatility_data = pd.DataFrame(index=vol_returns.index)
+
+        volatility_data["Volatilidad 20 días"] = (
+            vol_returns.rolling(20).std() * (252 ** 0.5) * 100
+        )
+
+        volatility_data["Volatilidad 60 días"] = (
+            vol_returns.rolling(60).std() * (252 ** 0.5) * 100
+        )
+
+        st.line_chart(volatility_data)
+
+        vol_20 = volatility_data["Volatilidad 20 días"].iloc[-1]
+        vol_60 = volatility_data["Volatilidad 60 días"].iloc[-1]
+
+        col1, col2 = st.columns(2)
+
+        col1.metric(
+            "Volatilidad anualizada (20 días)",
+            f"{vol_20:.2f}%"
+        )
+
+        col2.metric(
+            "Volatilidad anualizada (60 días)",
+            f"{vol_60:.2f}%"
+        )
+
+        st.subheader("Interpretación estadística")
+
+        if vol_20 > vol_60:
+            st.warning(
+                "La volatilidad reciente supera la referencia "
+                "de 60 días."
+            )
+        else:
+            st.info(
+                "La volatilidad reciente está por debajo "
+                "de la referencia de 60 días."
+            )
+
+        st.caption(
+            "La volatilidad mide la variabilidad histórica de los "
+            "rendimientos. No indica por sí sola la dirección del mercado."
+        )
+
+    else:
+        st.warning("Se necesitan al menos 60 observaciones.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
