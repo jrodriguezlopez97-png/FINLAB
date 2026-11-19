@@ -119,7 +119,14 @@ if errors:
         for ticker, message in errors.items():
             st.warning(f"{ticker}: {message}")
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide = st.tabs(["◈ Mercado", "⬡ Riesgo", "⌘ Correlaciones", "▤ Datos", "ⓘ Guía"])
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai = st.tabs([
+    "◈ Mercado",
+    "⬡ Riesgo",
+    "⌘ Correlaciones",
+    "▤ Datos",
+    "ⓘ Guía",
+    "🧠 FINLAB AI Analyst"
+])
 
 with tab_market:
     st.subheader("Evolución comparativa (base 100)")
@@ -179,6 +186,135 @@ with tab_guide:
 
 Los datos proceden de un proveedor externo y pueden contener huecos o revisiones. Las métricas históricas no predicen el futuro y no constituyen recomendaciones financieras.
 """)
+
+with tab_ai:
+    st.subheader("🧠 FINLAB AI Analyst")
+    st.caption("Analista educativo basado en reglas cuantitativas transparentes.")
+
+    st.info(
+        "Este módulo interpreta datos históricos. "
+        "No predice el mercado ni recomienda comprar o vender activos."
+    )
+
+    selected = st.selectbox(
+        "Selecciona un activo para analizar",
+        metrics.index.tolist()
+    )
+
+    m = metrics.loc[selected]
+
+    st.markdown(f"### Análisis de {selected}")
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Rentabilidad anualizada",
+        f"{m['Rentabilidad anualizada (%)']:.2f}%"
+    )
+
+    col2.metric(
+        "Volatilidad anualizada",
+        f"{m['Volatilidad anualizada (%)']:.2f}%"
+    )
+
+    col3.metric(
+        "Máximo drawdown",
+        f"{m['Máx. drawdown (%)']:.2f}%"
+    )
+
+    st.markdown("### Interpretación de indicadores")
+
+    median_vol = metrics["Volatilidad anualizada (%)"].median()
+    asset_vol = m["Volatilidad anualizada (%)"]
+
+    if asset_vol > median_vol:
+        st.warning(
+            "La volatilidad de este activo está por encima "
+            "de la mediana de los activos analizados."
+        )
+    else:
+        st.success(
+            "La volatilidad de este activo está igual o por debajo "
+            "de la mediana de los activos analizados."
+        )
+
+    drawdown = m["Máx. drawdown (%)"]
+
+    st.write(
+        f"**Drawdown:** el máximo descenso histórico calculado "
+        f"desde un máximo anterior fue del {abs(drawdown):.2f}%."
+    )
+
+    var_value = m["VaR diario 95% (%)"]
+    cvar_value = m["CVaR diario 95% (%)"]
+
+    st.write(
+        f"**VaR diario 95%:** {var_value:.2f}%. "
+        "Es una estimación histórica del umbral de pérdida "
+        "que no se superó en aproximadamente el 95% de las sesiones."
+    )
+
+    st.write(
+        f"**CVaR diario 95%:** {cvar_value:.2f}%. "
+        "Estima la pérdida media en las sesiones que quedaron "
+        "en el 5% más desfavorable."
+    )
+
+    sharpe = m["Sharpe"]
+    sortino = m["Sortino"]
+
+    st.write(
+        f"**Sharpe:** {sharpe:.2f}. "
+        "Relaciona el exceso de rentabilidad histórica con la volatilidad."
+        if pd.notna(sharpe)
+        else "**Sharpe:** no disponible."
+    )
+
+    st.write(
+        f"**Sortino:** {sortino:.2f}. "
+        "Relaciona el exceso de rentabilidad con la volatilidad bajista."
+        if pd.notna(sortino)
+        else "**Sortino:** no disponible."
+    )
+
+    st.markdown("### Comparación con los demás activos")
+
+    comparison = metrics[
+        [
+            "Rentabilidad anualizada (%)",
+            "Volatilidad anualizada (%)",
+            "Máx. drawdown (%)",
+            "Sharpe",
+            "Sortino"
+        ]
+    ].sort_values(
+        "Volatilidad anualizada (%)",
+        ascending=False
+    )
+
+    st.dataframe(
+        comparison.style.format("{:.2f}"),
+        use_container_width=True
+    )
+
+    st.markdown("### Conclusión educativa")
+
+    st.write(
+        f"{selected} presenta una volatilidad anualizada "
+        f"del {asset_vol:.2f}%, frente a una mediana del "
+        f"{median_vol:.2f}% en el conjunto analizado."
+    )
+
+    st.write(
+        "Estos resultados describen el comportamiento pasado "
+        "durante el periodo seleccionado. No permiten asegurar "
+        "cómo se comportará el activo en el futuro."
+    )
+
+    st.caption(
+        "FINLAB AI Analyst V1 · Análisis automatizado mediante reglas, "
+        "no inteligencia artificial generativa."
+    )
 
 st.divider()
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
