@@ -1708,5 +1708,30 @@ with tab_v11:
             st.warning("No hay suficientes datos para este análisis.")
     else:
         st.info("Selecciona exactamente dos activos.")
+    st.divider()
+    st.subheader("6. Covariance Matrix Pro")
+    st.caption("Matriz de covarianzas entre los activos seleccionados")
+
+    covariance_matrix = institutional_returns.cov() * 252
+
+    st.dataframe(
+        covariance_matrix.round(5),
+        use_container_width=True
+    )
+
+    st.caption(
+        "Covarianza anualizada estimada a partir de rendimientos diarios. "
+        "Es una medida estadística histórica, no una predicción."
+    )
+
+    csv_covariance = covariance_matrix.to_csv().encode("utf-8")
+
+    st.download_button(
+        "📥 Descargar matriz de covarianzas",
+        data=csv_covariance,
+        file_name="FINLAB_Covariance_Matrix.csv",
+        mime="text/csv",
+        key="v12_covariance_download"
+    )
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
