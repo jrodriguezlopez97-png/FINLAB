@@ -2052,5 +2052,79 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos dos activos para generar el informe.")
+    st.divider()
+    st.subheader("10. Trend Forecasting")
+    st.caption("Análisis estadístico de tendencias históricas")
 
+    forecast_asset = st.selectbox(
+        "Selecciona un activo",
+        institutional_assets,
+        key="v13_forecast_asset"
+    )
+
+    forecast_days = st.slider(
+        "Horizonte de proyección (días)",
+        min_value=5,
+        max_value=60,
+        value=20,
+        key="v13_forecast_days"
+    )
+
+    forecast_history = returns[forecast_asset].dropna()
+
+    if len(forecast_history) >= 30:
+
+        import numpy as np
+
+        historical_prices = (
+            (1 + forecast_history).cumprod() * 100
+        )
+
+        x = np.arange(len(historical_prices))
+        y = historical_prices.values
+
+        slope, intercept = np.polyfit(x, y, 1)
+
+        future_x = np.arange(
+            len(historical_prices),
+            len(historical_prices) + forecast_days
+        )
+
+        projected_values = slope * future_x + intercept
+
+        historical_series = pd.Series(
+            y[-120:],
+            index=historical_prices.index[-120:],
+            name="Histórico"
+        )
+
+        future_dates = pd.bdate_range(
+            start=historical_prices.index[-1],
+            periods=forecast_days + 1
+        )[1:]
+
+        projected_series = pd.Series(
+            projected_values,
+            index=future_dates,
+            name="Proyección experimental"
+        )
+
+        forecast_chart = pd.concat(
+            [historical_series, projected_series]
+        )
+
+        st.line_chart(forecast_chart)
+
+        st.metric(
+            "Valor final estimado por el modelo",
+            f"{projected_values[-1]:.2f}"
+        )
+
+        st.caption(
+            "Proyección lineal ilustrativa basada en datos históricos. "
+            "No incorpora noticias, cambios de mercado ni eventos futuros."
+        )
+
+    else:
+        st.warning("Se necesitan al menos 30 observaciones.")
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
