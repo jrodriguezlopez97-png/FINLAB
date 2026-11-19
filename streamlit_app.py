@@ -2865,5 +2865,136 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("20. FINLAB Quantitative Intelligence Center")
+    st.caption("Centro avanzado de análisis cuantitativo")
+
+    quant_assets = st.multiselect(
+        "Selecciona activos para el análisis",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_quant_assets"
+    )
+
+    if len(quant_assets) >= 1:
+
+        quant_data = returns[quant_assets].dropna()
+
+        if len(quant_data) >= 20:
+
+            quant_portfolio = quant_data.mean(axis=1)
+
+            cumulative_quant = (1 + quant_portfolio).cumprod()
+
+            total_return = (
+                (cumulative_quant.iloc[-1] - 1) * 100
+            )
+
+            annual_return = (
+                cumulative_quant.iloc[-1]
+                ** (252 / len(quant_portfolio)) - 1
+            ) * 100
+
+            annual_volatility = (
+                quant_portfolio.std() * (252 ** 0.5) * 100
+            )
+
+            downside_returns = quant_portfolio[
+                quant_portfolio < 0
+            ]
+
+            downside_volatility = (
+                downside_returns.std() * (252 ** 0.5) * 100
+                if len(downside_returns) > 1 else 0
+            )
+
+            sharpe_ratio = (
+                annual_return / annual_volatility
+                if annual_volatility > 0 else 0
+            )
+
+            sortino_ratio = (
+                annual_return / downside_volatility
+                if downside_volatility > 0 else 0
+            )
+
+            running_max = cumulative_quant.cummax()
+
+            drawdown = (
+                cumulative_quant / running_max - 1
+            )
+
+            max_drawdown = drawdown.min() * 100
+
+            positive_days = (
+                (quant_portfolio > 0).mean() * 100
+            )
+
+            st.subheader("Quantitative Scorecard")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric("Rendimiento total", f"{total_return:.2f}%")
+                st.metric("Rendimiento anualizado", f"{annual_return:.2f}%")
+
+            with col2:
+                st.metric("Volatilidad anualizada", f"{annual_volatility:.2f}%")
+                st.metric("Sharpe simplificado", f"{sharpe_ratio:.2f}")
+
+            with col3:
+                st.metric("Sortino simplificado", f"{sortino_ratio:.2f}")
+                st.metric("Drawdown máximo", f"{max_drawdown:.2f}%")
+
+            st.metric("Días positivos", f"{positive_days:.1f}%")
+
+            st.subheader("Evolución del rendimiento")
+
+            st.line_chart(cumulative_quant)
+
+            st.subheader("Evolución del riesgo")
+
+            st.line_chart(drawdown * 100)
+
+            quant_summary = pd.DataFrame({
+                "Indicador": [
+                    "Rendimiento total",
+                    "Rendimiento anualizado",
+                    "Volatilidad anualizada",
+                    "Sharpe simplificado",
+                    "Sortino simplificado",
+                    "Drawdown máximo",
+                    "Días positivos"
+                ],
+                "Resultado": [
+                    f"{total_return:.2f}%",
+                    f"{annual_return:.2f}%",
+                    f"{annual_volatility:.2f}%",
+                    f"{sharpe_ratio:.2f}",
+                    f"{sortino_ratio:.2f}",
+                    f"{max_drawdown:.2f}%",
+                    f"{positive_days:.1f}%"
+                ]
+            })
+
+            st.subheader("Informe cuantitativo")
+
+            st.dataframe(
+                quant_summary,
+                use_container_width=True
+            )
+
+            st.caption(
+                "Cartera hipotética con ponderaciones iguales. "
+                "Los ratios son simplificados y no descuentan una tasa "
+                "libre de riesgo. Los datos históricos no garantizan "
+                "resultados futuros."
+            )
+
+        else:
+            st.warning("Se necesitan al menos 20 observaciones.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
