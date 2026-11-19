@@ -2127,4 +2127,58 @@ with tab_v11:
 
     else:
         st.warning("Se necesitan al menos 30 observaciones.")
+    st.divider()
+    st.subheader("11. Moving Average Analysis")
+    st.caption("Comparación de medias móviles históricas")
+
+    ma_asset = st.selectbox(
+        "Selecciona un activo",
+        institutional_assets,
+        key="v13_ma_asset"
+    )
+
+    ma_returns = returns[ma_asset].dropna()
+
+    ma_prices = (1 + ma_returns).cumprod() * 100
+
+    ma_data = pd.DataFrame({
+        "Precio normalizado": ma_prices,
+        "Media móvil 20": ma_prices.rolling(20).mean(),
+        "Media móvil 50": ma_prices.rolling(50).mean(),
+        "Media móvil 200": ma_prices.rolling(200).mean()
+    })
+
+    st.line_chart(ma_data)
+
+    latest = ma_data.iloc[-1]
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "MA 20",
+        f"{latest['Media móvil 20']:.2f}"
+    )
+
+    col2.metric(
+        "MA 50",
+        f"{latest['Media móvil 50']:.2f}"
+    )
+
+    col3.metric(
+        "MA 200",
+        f"{latest['Media móvil 200']:.2f}"
+    )
+
+    if pd.notna(latest["Media móvil 20"]) and pd.notna(latest["Media móvil 50"]):
+
+        if latest["Media móvil 20"] > latest["Media móvil 50"]:
+            st.success("MA 20 está por encima de MA 50.")
+        else:
+            st.info("MA 20 está por debajo de MA 50.")
+
+    st.caption(
+        "Las medias móviles suavizan datos históricos. "
+        "No garantizan la dirección futura del mercado."
+    )
+
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
