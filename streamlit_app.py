@@ -120,7 +120,8 @@ if errors:
             st.warning(f"{ticker}: {message}")
 
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive = st.tabs([
+
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive, tab_doctor = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
@@ -131,8 +132,10 @@ tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_
     "🛡️ Risk Intelligence",
     "🌐 Market Intelligence",
     "🔬 AI Research Lab",
-    "🚀 Executive Dashboard"
+    "🚀 Executive Dashboard",
+    "🩺 AI Portfolio Doctor"
 ])
+
 
 with tab_market:
     st.subheader("Evolución comparativa (base 100)")
@@ -1236,5 +1239,96 @@ with tab_executive:
 
     else:
         st.warning("No hay datos suficientes para construir el dashboard.")
+
+
+with tab_doctor:
+    st.header("🩺 FINLAB AI Portfolio Doctor")
+    st.caption("Diagnóstico cuantitativo de carteras simuladas")
+
+    st.info(
+        "Herramienta educativa. Analiza datos históricos y no "
+        "ofrece recomendaciones de inversión."
+    )
+
+    doctor_assets = list(returns.columns)
+
+    selected_doctor_assets = st.multiselect(
+        "Selecciona los activos de tu cartera simulada",
+        doctor_assets,
+        default=doctor_assets[:min(3, len(doctor_assets))],
+        key="doctor_assets"
+    )
+
+    if selected_doctor_assets:
+        doctor_returns = returns[selected_doctor_assets].dropna()
+
+        st.subheader("1. Distribución simulada")
+
+        weights = np.ones(len(selected_doctor_assets)) / len(selected_doctor_assets)
+
+        weight_df = pd.DataFrame({
+            "Activo": selected_doctor_assets,
+            "Peso simulado (%)": weights * 100
+        })
+
+        st.dataframe(weight_df.round(2), use_container_width=True)
+
+        st.subheader("2. Diagnóstico de concentración")
+
+        hhi = float(np.sum(weights ** 2))
+        effective_assets = 1 / hhi
+
+        col1, col2 = st.columns(2)
+        col1.metric("Índice HHI", f"{hhi:.3f}")
+        col2.metric("Activos efectivos", f"{effective_assets:.2f}")
+
+        if hhi > 0.5:
+            st.warning("Concentración elevada en la distribución simulada.")
+        elif hhi > 0.25:
+            st.info("Concentración intermedia en la distribución simulada.")
+        else:
+            st.success("La distribución presenta menor concentración.")
+
+        st.subheader("3. Riesgo histórico")
+
+        portfolio_returns = doctor_returns.mean(axis=1)
+
+        annual_vol = portfolio_returns.std() * np.sqrt(252) * 100
+        historical_var = portfolio_returns.quantile(0.05) * 100
+        historical_cvar = portfolio_returns[
+            portfolio_returns <= portfolio_returns.quantile(0.05)
+        ].mean() * 100
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Volatilidad anualizada", f"{annual_vol:.2f}%")
+        col2.metric("VaR histórico 95%", f"{historical_var:.2f}%")
+        col3.metric("CVaR histórico 95%", f"{historical_cvar:.2f}%")
+
+        st.subheader("4. Evolución de la cartera simulada")
+
+        equity_curve = (1 + portfolio_returns).cumprod()
+        st.line_chart(equity_curve)
+
+        st.subheader("5. Informe del diagnóstico")
+
+        if annual_vol > 30:
+            diagnosis = "La volatilidad histórica observada es elevada."
+        elif annual_vol > 15:
+            diagnosis = "La volatilidad histórica observada es intermedia."
+        else:
+            diagnosis = "La volatilidad histórica observada es relativamente baja."
+
+        st.write(diagnosis)
+        st.write(
+            f"La cartera contiene {len(selected_doctor_assets)} activos "
+            f"con pesos iguales simulados. Su índice HHI es {hhi:.3f}."
+        )
+
+        st.caption(
+            "Las métricas describen el pasado y no predicen resultados futuros."
+        )
+
+    else:
+        st.warning("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
