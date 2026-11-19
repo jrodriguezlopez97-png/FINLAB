@@ -1671,46 +1671,42 @@ with tab_v11:
 
     else:
         st.warning("Selecciona al menos dos activos.")
+    st.divider()
+    st.subheader("5. Rolling Correlation")
+    st.caption("Evolución temporal de la correlación entre dos activos")
 
-        st.divider()
-        st.subheader("3. Rolling Correlation")
-        st.caption("Evolución temporal de la correlación entre dos activos")
+    rolling_assets = st.multiselect(
+        "Selecciona dos activos",
+        institutional_assets,
+        default=institutional_assets[:2],
+        key="v12_rolling_assets"
+    )
 
-        rolling_assets = st.multiselect(
-            "Selecciona dos activos",
-            institutional_assets,
-            default=institutional_assets[:2],
-            key="v12_rolling_assets"
+    rolling_window = st.slider(
+        "Ventana de análisis (días)",
+        min_value=20,
+        max_value=120,
+        value=60,
+        key="v12_rolling_window"
+    )
+
+    if len(rolling_assets) == 2:
+        rolling_corr = (
+            returns[rolling_assets[0]]
+            .rolling(rolling_window)
+            .corr(returns[rolling_assets[1]])
+            .dropna()
         )
 
-        rolling_window = st.slider(
-            "Ventana de análisis (días)",
-            min_value=20,
-            max_value=120,
-            value=60,
-            key="v12_rolling_window"
-        )
-
-        if len(rolling_assets) == 2:
-            rolling_corr = (
-                institutional_returns[rolling_assets[0]]
-                .rolling(rolling_window)
-                .corr(institutional_returns[rolling_assets[1]])
-                .dropna()
-            )
-
-            st.line_chart(
-                rolling_corr,
-                use_container_width=True
-            )
-
-            current_corr = rolling_corr.iloc[-1]
-
+        if not rolling_corr.empty:
+            st.line_chart(rolling_corr)
             st.metric(
                 "Correlación más reciente",
-                f"{current_corr:.3f}"
+                f"{rolling_corr.iloc[-1]:.3f}"
             )
         else:
-            st.info("Selecciona exactamente dos activos.")
+            st.warning("No hay suficientes datos para este análisis.")
+    else:
+        st.info("Selecciona exactamente dos activos.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
