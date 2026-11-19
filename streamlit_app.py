@@ -3139,5 +3139,112 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("22. FINLAB Portfolio Intelligence Dashboard")
+    st.caption("Análisis comparativo de activos y comportamiento histórico")
+
+    intelligence_assets = st.multiselect(
+        "Selecciona activos",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v13_intelligence_assets"
+    )
+
+    if len(intelligence_assets) >= 1:
+
+        intelligence_data = returns[intelligence_assets].dropna()
+
+        if len(intelligence_data) >= 20:
+
+            intelligence_metrics = []
+
+            for asset in intelligence_assets:
+
+                asset_returns = intelligence_data[asset]
+
+                cumulative = (1 + asset_returns).cumprod()
+
+                total_return = (cumulative.iloc[-1] - 1) * 100
+
+                annual_volatility = (
+                    asset_returns.std() * (252 ** 0.5) * 100
+                )
+
+                positive_days = (
+                    (asset_returns > 0).mean() * 100
+                )
+
+                running_max = cumulative.cummax()
+
+                drawdown = (
+                    cumulative / running_max - 1
+                )
+
+                max_drawdown = drawdown.min() * 100
+
+                intelligence_metrics.append({
+                    "Activo": asset,
+                    "Rendimiento (%)": total_return,
+                    "Volatilidad (%)": annual_volatility,
+                    "Días positivos (%)": positive_days,
+                    "Drawdown máximo (%)": max_drawdown
+                })
+
+            intelligence_df = pd.DataFrame(intelligence_metrics)
+
+            st.subheader("Comparación de activos")
+
+            st.dataframe(
+                intelligence_df.round(2),
+                use_container_width=True
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                best_performance = intelligence_df.loc[
+                    intelligence_df["Rendimiento (%)"].idxmax()
+                ]
+
+                st.metric(
+                    "Mayor rendimiento histórico",
+                    best_performance["Activo"],
+                    f'{best_performance["Rendimiento (%)"]:.2f}%'
+                )
+
+            with col2:
+                lowest_volatility = intelligence_df.loc[
+                    intelligence_df["Volatilidad (%)"].idxmin()
+                ]
+
+                st.metric(
+                    "Menor volatilidad histórica",
+                    lowest_volatility["Activo"],
+                    f'{lowest_volatility["Volatilidad (%)"]:.2f}%'
+                )
+
+            st.subheader("Rendimiento histórico")
+
+            st.bar_chart(
+                intelligence_df.set_index("Activo")["Rendimiento (%)"]
+            )
+
+            st.subheader("Volatilidad histórica")
+
+            st.bar_chart(
+                intelligence_df.set_index("Activo")["Volatilidad (%)"]
+            )
+
+            st.caption(
+                "Las clasificaciones describen únicamente el periodo "
+                "histórico analizado. Un mejor resultado pasado no "
+                "garantiza un mejor resultado futuro."
+            )
+
+        else:
+            st.warning("No hay suficientes observaciones.")
+
+    else:
+        st.info("Selecciona al menos un activo.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
