@@ -3329,5 +3329,85 @@ with tab_v11:
 
     else:
         st.info("Selecciona al menos un activo.")
+    st.divider()
+    st.subheader("24. FINLAB Market Regime Detector")
+    st.caption("Clasificación estadística del comportamiento del mercado")
+
+    regime_asset = st.selectbox(
+        "Selecciona un activo",
+        institutional_assets,
+        key="v13_regime_asset"
+    )
+
+    regime_returns = returns[regime_asset].dropna()
+
+    if len(regime_returns) >= 50:
+
+        regime_index = (1 + regime_returns).cumprod()
+
+        regime_short = regime_index.rolling(20).mean()
+        regime_long = regime_index.rolling(50).mean()
+
+        regime_data = pd.DataFrame({
+            "Índice acumulado": regime_index,
+            "Media móvil 20": regime_short,
+            "Media móvil 50": regime_long
+        }).dropna()
+
+        regime_data["Estado"] = "Lateral"
+
+        regime_data.loc[
+            regime_data["Media móvil 20"] >
+            regime_data["Media móvil 50"],
+            "Estado"
+        ] = "Tendencia positiva"
+
+        regime_data.loc[
+            regime_data["Media móvil 20"] <
+            regime_data["Media móvil 50"],
+            "Estado"
+        ] = "Tendencia negativa"
+
+        current_regime = regime_data["Estado"].iloc[-1]
+
+        st.subheader("Estado histórico más reciente")
+
+        if current_regime == "Tendencia positiva":
+            st.success(f"Estado detectado: {current_regime}")
+        elif current_regime == "Tendencia negativa":
+            st.warning(f"Estado detectado: {current_regime}")
+        else:
+            st.info(f"Estado detectado: {current_regime}")
+
+        st.subheader("Indicadores de tendencia")
+
+        st.line_chart(
+            regime_data[
+                [
+                    "Índice acumulado",
+                    "Media móvil 20",
+                    "Media móvil 50"
+                ]
+            ]
+        )
+
+        st.subheader("Distribución de estados históricos")
+
+        regime_distribution = (
+            regime_data["Estado"]
+            .value_counts(normalize=True) * 100
+        )
+
+        st.bar_chart(regime_distribution)
+
+        st.caption(
+            "La clasificación utiliza medias móviles de 20 y 50 "
+            "observaciones sobre un índice construido con rendimientos. "
+            "Es una aproximación educativa, no una señal de compra "
+            "o venta ni una predicción."
+        )
+
+    else:
+        st.warning("Se necesitan al menos 50 observaciones.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
