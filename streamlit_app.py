@@ -120,7 +120,7 @@ if errors:
             st.warning(f"{ticker}: {message}")
 
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive, tab_doctor, tab_stress = st.tabs([
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive, tab_doctor, tab_stress, tab_v10 = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
@@ -133,7 +133,8 @@ tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_
     "🔬 AI Research Lab",
     "🚀 Executive Dashboard",
     "🩺 AI Portfolio Doctor",
-    "⚡ Stress Testing Lab"
+    "⚡ Stress Testing Lab",
+    "💎 Smart Intelligence Center"
 ])
 
 
@@ -1441,5 +1442,131 @@ with tab_stress:
 
     else:
         st.warning("Selecciona al menos un activo.")
+
+
+with tab_v10:
+    st.header("💎 FINLAB Smart Intelligence Center")
+    st.caption("Alertas, rendimiento histórico e informes avanzados")
+
+    st.info(
+        "Herramienta educativa basada en datos históricos. "
+        "Las alertas no son predicciones ni recomendaciones."
+    )
+
+    if not returns.empty and not prices.empty:
+
+        st.subheader("1. 📈 Performance Lab")
+
+        performance_assets = list(returns.columns)
+
+        selected_performance = st.multiselect(
+            "Selecciona activos para analizar",
+            performance_assets,
+            default=performance_assets[:min(3, len(performance_assets))],
+            key="v10_performance"
+        )
+
+        if selected_performance:
+            performance_returns = returns[selected_performance].dropna()
+
+            performance_table = pd.DataFrame({
+                "Rentabilidad anualizada (%)":
+                    performance_returns.mean() * 252 * 100,
+                "Volatilidad anualizada (%)":
+                    performance_returns.std() * np.sqrt(252) * 100,
+                "Peor día (%)":
+                    performance_returns.min() * 100
+            })
+
+            st.dataframe(
+                performance_table.round(2),
+                use_container_width=True
+            )
+
+            equity = (1 + performance_returns).cumprod()
+            st.line_chart(equity)
+
+            st.subheader("2. 🚨 Smart Alerts")
+
+            volatility_limit = st.slider(
+                "Umbral de volatilidad anualizada (%)",
+                min_value=5,
+                max_value=80,
+                value=30,
+                key="v10_vol_limit"
+            )
+
+            daily_limit = st.slider(
+                "Umbral de movimiento diario (%)",
+                min_value=1,
+                max_value=15,
+                value=5,
+                key="v10_daily_limit"
+            )
+
+            for asset in selected_performance:
+                asset_returns = performance_returns[asset]
+
+                annual_vol = asset_returns.std() * np.sqrt(252) * 100
+                worst_day = asset_returns.min() * 100
+
+                if annual_vol > volatility_limit:
+                    st.warning(
+                        f"{asset}: volatilidad histórica de "
+                        f"{annual_vol:.2f}%, superior al umbral."
+                    )
+
+                if abs(worst_day) > daily_limit:
+                    st.warning(
+                        f"{asset}: movimiento diario histórico de "
+                        f"{worst_day:.2f}%, superior al umbral."
+                    )
+
+            st.subheader("3. 📄 PDF Pro")
+
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+            from io import BytesIO
+
+            pdf_data = BytesIO()
+            pdf = canvas.Canvas(pdf_data, pagesize=A4)
+
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(45, 800, "FINLAB V10 - Intelligence Report")
+
+            pdf.setFont("Helvetica", 10)
+            y = 765
+
+            for line in [
+                "Educational quantitative research report",
+                "",
+                *performance_table.round(2).to_string().splitlines(),
+                "",
+                "Historical data does not guarantee future results.",
+                "This report is not financial advice."
+            ]:
+                if y < 60:
+                    pdf.showPage()
+                    y = 800
+                    pdf.setFont("Helvetica", 10)
+
+                pdf.drawString(45, y, line[:100])
+                y -= 18
+
+            pdf.save()
+            pdf_data.seek(0)
+
+            st.download_button(
+                "📄 Descargar informe PDF Pro",
+                data=pdf_data,
+                file_name="FINLAB_V10_Intelligence_Report.pdf",
+                mime="application/pdf"
+            )
+
+        else:
+            st.warning("Selecciona al menos un activo.")
+
+    else:
+        st.warning("No hay datos suficientes para el análisis.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
