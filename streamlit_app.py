@@ -119,13 +119,14 @@ if errors:
         for ticker, message in errors.items():
             st.warning(f"{ticker}: {message}")
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai = st.tabs([
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
     "▤ Datos",
     "ⓘ Guía",
-    "🧠 FINLAB AI Analyst"
+    "🧠 FINLAB AI Analyst",
+    "📊 Portfolio Simulator"
 ])
 
 with tab_market:
@@ -315,6 +316,212 @@ with tab_ai:
         "FINLAB AI Analyst V1 · Análisis automatizado mediante reglas, "
         "no inteligencia artificial generativa."
     )
+
+
+with tab_portfolio:
+    st.subheader("📊 FINLAB Portfolio Simulator")
+    st.caption("Simulación histórica de carteras hipotéticas.")
+
+    st.info(
+        "Simulador educativo con datos históricos. "
+        "No utiliza dinero real ni ejecuta operaciones."
+    )
+
+    available_assets = returns.columns.tolist()
+
+    selected_assets = st.multiselect(
+        "Selecciona los activos de tu cartera",
+        available_assets,
+        default=available_assets
+    )
+
+    if not selected_assets:
+        st.warning("Selecciona al menos un activo.")
+    else:
+        st.markdown("### Distribución hipotética")
+
+        raw_weights = {}
+
+        default_weight = round(100 / len(selected_assets))
+
+        for ticker in selected_assets:
+            raw_weights[ticker] = st.slider(
+                f"Peso de {ticker} (%)",
+                min_value=0,
+                max_value=100,
+                value=default_weight,
+                key=f"portfolio_weight_{ticker}"
+            )
+
+        total_weight = sum(raw_weights.values())
+
+        if total_weight == 0:
+            st.warning(
+                "Todos los pesos están a cero. "
+                "Se utilizará una distribución igualitaria."
+            )
+            weights = pd.Series(
+                1 / len(selected_assets),
+                index=selected_assets
+            )
+        else:
+            weights = pd.Series(raw_weights) / total_weight
+
+        st.markdown("### Distribución normalizada")
+
+        weight_table = pd.DataFrame({
+            "Activo": weights.index,
+            "Peso efectivo (%)": weights.values * 100
+        })
+
+        st.dataframe(
+            weight_table.style.format({
+                "Peso efectivo (%)": "{:.2f}%"
+            }),
+            use_container_width=True
+        )
+
+        f = px.pie(
+            weight_table,
+            names="Activo",
+            values="Peso efectivo (%)",
+            hole=0.45,
+            template="plotly_dark"
+        )
+        f.update_layout(height=350)
+        st.plotly_chart(f, use_container_width=True)
+
+        # Rendimientos diarios de la cartera
+        portfolio_returns = (
+            returns[selected_assets] @ weights
+        ).dropna()
+
+        # Evolución acumulada
+        portfolio_wealth = (1 + portfolio_returns).cumprod()
+
+        # Indicadores
+        portfolio_vol = (
+            portfolio_returns.std() * np.sqrt(252)
+        )
+
+        portfolio_ann_return = (
+            portfolio_wealth.iloc[-1] **
+            (252 / len(portfolio_returns)) - 1
+        )
+
+        portfolio_drawdown = (
+            portfolio_wealth /
+            portfolio_wealth.cummax() - 1
+        )
+
+        portfolio_max_dd = portfolio_drawdown.min()
+
+        portfolio_sharpe = (
+            (portfolio_returns.mean() - rf_daily) /
+            portfolio_returns.std() * np.sqrt(252)
+            if portfolio_returns.std() > 0 else np.nan
+        )
+
+        portfolio_q05 = portfolio_returns.quantile(0.05)
+        portfolio_var = -portfolio_q05 * 100
+
+        portfolio_cvar = (
+            -portfolio_returns[
+                portfolio_returns <= portfolio_q05
+            ].mean() * 100
+        )
+
+        st.divider()
+        st.markdown("### Resultados de la cartera")
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        c1.metric(
+            "Rentabilidad anualizada",
+            f"{portfolio_ann_return * 100:.2f}%"
+        )
+
+        c2.metric(
+            "Volatilidad anualizada",
+            f"{portfolio_vol * 100:.2f}%"
+        )
+
+        c3.metric(
+            "Máximo drawdown",
+            f"{portfolio_max_dd * 100:.2f}%"
+        )
+
+        c4.metric(
+            "Sharpe",
+            f"{portfolio_sharpe:.2f}"
+            if pd.notna(portfolio_sharpe)
+            else "No disponible"
+        )
+
+        st.write(
+            f"**VaR diario histórico 95%:** "
+            f"{portfolio_var:.2f}%"
+        )
+
+        st.write(
+            f"**CVaR diario histórico 95%:** "
+            f"{portfolio_cvar:.2f}%"
+        )
+
+        # Comparación histórica
+        st.markdown("### Evolución comparativa")
+
+        comparison_prices = (
+            prices[selected_assets] /
+            prices[selected_assets].iloc[0] * 100
+        )
+
+        portfolio_index = (
+            portfolio_wealth /
+            portfolio_wealth.iloc[0] * 100
+        )
+
+        comparison_prices["Cartera hipotética"] = (
+            portfolio_index
+        )
+
+        f = px.line(
+            comparison_prices,
+            template="plotly_dark",
+            labels={
+                "value": "Índice base 100",
+                "index": "Fecha",
+                "variable": "Activo"
+            }
+        )
+
+        f.update_layout(height=450)
+        st.plotly_chart(f, use_container_width=True)
+
+        # Drawdown de la cartera
+        st.markdown("### Drawdown de la cartera")
+
+        dd_portfolio = portfolio_drawdown * 100
+
+        f = px.area(
+            x=dd_portfolio.index,
+            y=dd_portfolio.values,
+            labels={
+                "x": "Fecha",
+                "y": "Drawdown (%)"
+            },
+            template="plotly_dark"
+        )
+
+        f.update_layout(height=320)
+        st.plotly_chart(f, use_container_width=True)
+
+        st.caption(
+            "Supuesto: ponderaciones objetivo constantes, "
+            "con rebalanceo diario implícito. No se incluyen "
+            "comisiones, impuestos ni deslizamiento. "
+            "Los resultados históricos no predicen el futuro."
+        )
 
 st.divider()
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
