@@ -120,7 +120,7 @@ if errors:
             st.warning(f"{ticker}: {message}")
 
 
-tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive, tab_doctor, tab_stress, tab_v10 = st.tabs([
+tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_risk_center, tab_market_intel, tab_research, tab_executive, tab_doctor, tab_stress, tab_v10, tab_v11 = st.tabs([
     "◈ Mercado",
     "⬡ Riesgo",
     "⌘ Correlaciones",
@@ -134,7 +134,8 @@ tab_market, tab_risk, tab_corr, tab_data, tab_guide, tab_ai, tab_portfolio, tab_
     "🚀 Executive Dashboard",
     "🩺 AI Portfolio Doctor",
     "⚡ Stress Testing Lab",
-    "💎 Smart Intelligence Center"
+    "💎 Smart Intelligence Center",
+    "🏛️ Institutional Intelligence"
 ])
 
 
@@ -1568,5 +1569,110 @@ with tab_v10:
 
     else:
         st.warning("No hay datos suficientes para el análisis.")
+
+
+with tab_v11:
+    st.header("🏛️ FINLAB Institutional Intelligence")
+    st.caption("Advanced quantitative research laboratory")
+
+    st.info(
+        "Herramientas estadísticas educativas. "
+        "Los resultados históricos no predicen el futuro."
+    )
+
+    institutional_assets = list(returns.columns)
+
+    selected_institutional = st.multiselect(
+        "Selecciona activos para el análisis",
+        institutional_assets,
+        default=institutional_assets[:min(5, len(institutional_assets))],
+        key="v11_assets"
+    )
+
+    if len(selected_institutional) >= 2:
+        institutional_returns = returns[selected_institutional].dropna()
+
+        st.subheader("1. Correlation Matrix Pro")
+
+        correlation_matrix = institutional_returns.corr()
+
+        st.dataframe(
+            correlation_matrix.round(3),
+            use_container_width=True
+        )
+
+        st.subheader("2. Mapa visual de correlaciones")
+
+        st.dataframe(
+            correlation_matrix.style.background_gradient(
+                cmap="RdYlGn",
+                vmin=-1,
+                vmax=1
+            ).format("{:.2f}"),
+            use_container_width=True
+        )
+
+        st.subheader("3. Relaciones más destacadas")
+
+        correlation_pairs = []
+
+        for i in range(len(selected_institutional)):
+            for j in range(i + 1, len(selected_institutional)):
+                asset_a = selected_institutional[i]
+                asset_b = selected_institutional[j]
+
+                value = correlation_matrix.loc[asset_a, asset_b]
+
+                correlation_pairs.append({
+                    "Activo A": asset_a,
+                    "Activo B": asset_b,
+                    "Correlación": round(float(value), 3)
+                })
+
+        correlation_ranking = pd.DataFrame(correlation_pairs)
+
+        if not correlation_ranking.empty:
+            correlation_ranking["Correlación absoluta"] = (
+                correlation_ranking["Correlación"].abs()
+            )
+
+            correlation_ranking = correlation_ranking.sort_values(
+                "Correlación absoluta",
+                ascending=False
+            ).drop(columns=["Correlación absoluta"])
+
+            st.dataframe(
+                correlation_ranking,
+                use_container_width=True
+            )
+
+        st.subheader("4. Interpretación")
+
+        st.write(
+            "Una correlación cercana a +1 indica que dos series "
+            "han tendido a moverse en la misma dirección."
+        )
+
+        st.write(
+            "Una correlación cercana a -1 indica movimientos "
+            "históricamente opuestos."
+        )
+
+        st.write(
+            "Una correlación cercana a 0 indica una relación lineal "
+            "histórica débil."
+        )
+
+        csv_corr = correlation_matrix.to_csv().encode("utf-8")
+
+        st.download_button(
+            "📥 Descargar matriz CSV",
+            data=csv_corr,
+            file_name="FINLAB_Correlation_Matrix.csv",
+            mime="text/csv"
+        )
+
+    else:
+        st.warning("Selecciona al menos dos activos.")
 
 st.markdown("<p style='text-align:center;color:#7890aa;font-size:.78rem'>FINLAB · EDUCATIONAL QUANTITATIVE RESEARCH · NO TRADING EXECUTION</p>", unsafe_allow_html=True)
